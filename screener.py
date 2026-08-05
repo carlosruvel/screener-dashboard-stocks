@@ -29,17 +29,40 @@ warnings.filterwarnings("ignore")
 # 1. CONFIGURACIÓN — MODIFICA AQUÍ
 # ======================================================================
 
-TICKERS_UNIVERSE = [
+# Respaldo fijo por si falla la descarga dinámica del S&P 500
+SP500_BACKUP = [
     "AAPL", "MSFT", "GOOGL", "AMZN", "META", "NVDA", "TSLA", "JPM", "V", "MA",
     "UNH", "HD", "PG", "KO", "PEP", "XOM", "CVX", "ABBV", "MRK", "PFE",
     "COST", "WMT", "DIS", "NFLX", "ADBE", "CRM", "INTC", "AMD", "QCOM", "TXN",
-    "NKE", "SBUX", "LOW", "TGT", "BA", "CAT", "GE", "HON", "UPS", "FDX",
-    "GS", "MS", "BAC", "WFC", "C", "BLK", "SCHW", "AXP", "T", "VZ",
-    "CMCSA", "ORCL", "IBM", "CSCO", "NOW", "PYPL", "SQ", "UBER", "ABNB", "BKNG",
+]
+
+# ADRs mexicanos / latam + emisoras BMV directas (se mantienen a mano,
+# no existe una fuente pública tan confiable para automatizar esta lista)
+ADRS_LATAM = [
     "AMX", "CX", "KOF", "FMX", "VIST",
     "GFNORTEO.MX", "WALMEX.MX", "BIMBOA.MX", "GRUMAB.MX", "GAPB.MX",
     "ASURB.MX", "ORBIA.MX", "ALFAA.MX", "PE&OLES.MX",
 ]
+
+
+def get_sp500_tickers() -> list:
+    """Obtiene la lista ACTUAL y COMPLETA del S&P 500 desde Wikipedia.
+    Si falla (sin internet, cambio de formato de la página, etc.),
+    usa el respaldo fijo de arriba para que el script no truene."""
+    try:
+        url = "https://en.wikipedia.org/wiki/List_of_S%26P_500_companies"
+        tables = pd.read_html(url)
+        tickers = tables[0]["Symbol"].tolist()
+        # yfinance usa "-" en vez de "." para tickers como BRK.B
+        tickers = [t.replace(".", "-") for t in tickers]
+        print(f"✅ S&P 500 obtenido dinámicamente: {len(tickers)} tickers")
+        return tickers
+    except Exception as e:
+        print(f"⚠️ No se pudo obtener el S&P 500 dinámicamente ({e}). Usando respaldo fijo.")
+        return SP500_BACKUP
+
+
+TICKERS_UNIVERSE = get_sp500_tickers() + ADRS_LATAM
 
 THRESHOLDS = {
     "peg_max": 1.5,
@@ -54,7 +77,7 @@ THRESHOLDS = {
     "rev_growth_min": 0.03,
 }
 
-REQUEST_PAUSE = 0.25
+REQUEST_PAUSE = 0.4
 OUTPUT_JSON = "data.json"
 OUTPUT_CSV = "screener_resultados_completos.csv"
 
