@@ -307,8 +307,13 @@ def run_screener():
 
 def clean_for_json(df: pd.DataFrame) -> list:
     """Convierte NaN/NaT a None para que sea JSON válido."""
-    df2 = df.where(pd.notnull(df), None)
-    return df2.to_dict(orient="records")
+    import math
+    records = df.to_dict(orient="records")
+    for row in records:
+        for k, v in row.items():
+            if isinstance(v, float) and math.isnan(v):
+                row[k] = None
+    return records
 
 
 if __name__ == "__main__":
